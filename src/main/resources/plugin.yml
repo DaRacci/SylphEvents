@@ -1,0 +1,8 @@
+name: SylphEvents
+version: '${version}'
+main: me.racci.events.SylphEvents
+api-version: 1.17
+load: STARTUP
+authors: [ Racci ]
+depend: [ RacciCore ]
+softdepend: [ EcoEnchants, Citizens ]

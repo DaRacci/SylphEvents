@@ -7,29 +7,32 @@ import com.github.stefvanschie.inventoryframework.gui.type.ChestGui
 import com.github.stefvanschie.inventoryframework.gui.type.util.Gui
 import com.github.stefvanschie.inventoryframework.pane.Pane
 import com.github.stefvanschie.inventoryframework.pane.util.Pattern
-import me.racci.raccicore.builders.ItemBuilder
-import me.racci.raccicore.gui.PatternPane
-import me.racci.raccicore.utils.strings.colouredTextOf
-import net.kyori.adventure.key.Key
+import me.racci.events.SylphEvents
+import me.racci.raccicore.api.builders.ItemBuilder
+import me.racci.raccicore.api.extensions.PatternPane
+import me.racci.raccicore.api.lifecycle.LifecycleListener
+import me.racci.raccicore.api.utils.primitive.colouredTextOf
+import me.racci.sylph.api.factories.SoundFactory
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextDecoration
-import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import org.bukkit.Material
 import org.bukkit.event.inventory.InventoryClickEvent
 import kotlin.math.floor
 import kotlin.properties.Delegates
 
-object GUI {
+class GUI(
+    override val plugin: SylphEvents
+): LifecycleListener<SylphEvents> {
 
-    private val backExitSound = Sound.sound(Key.key("block.beehive.exit"), Sound.Source.MASTER, 1f, 1f)
     private val exitGUIButton = GuiItem(ItemBuilder.from(Material.BARRIER) {
         name = (colouredTextOf("&cClose this menu"))
         lore = colouredTextOf("&f&l» &bClick &f&l« &eclose the menu.")
     }
     ) {
         it.whoClicked.closeInventory()
-        it.whoClicked.playSound(backExitSound, Sound.Emitter.self())
+        it.whoClicked.playSound(SoundFactory.beeHiveSound, Sound.Emitter.self())
     }
 
     private val borderFiller = HashMap<Material, GuiItem>().apply {
@@ -43,7 +46,7 @@ object GUI {
     var mainMenuGUI         : ChestGui by Delegates.notNull()
     private var hollowsEve2021GUI   : ChestGui by Delegates.notNull()
 
-    fun init() {
+    override suspend fun onEnable() {
         mainMenuGUI = ChestGui(1, "Event Item GUI").apply {
             addPane(PatternPane(
                 0, 0,
@@ -53,16 +56,16 @@ object GUI {
             ) {
                 bindItem('0', borderFiller[Material.GRAY_STAINED_GLASS_PANE]!!)
                 bindItem('1', GuiItem(ItemBuilder.from(Material.ROTTEN_FLESH) {
-                    name = MiniMessage.get().parse("gradient:#6fe461:#3f473f><bold>HollowsEve2021</gradient></bold>").decoration(TextDecoration.ITALIC, false)
+                    name = miniMessage().parse("gradient:#6fe461:#3f473f><bold>HollowsEve2021</gradient></bold>").decoration(TextDecoration.ITALIC, false)
                     lore {
                         listOf(
                             Component.empty(),
-                            MiniMessage.get().parse("<white><bold>»</bold> <aqua>Click</aqua> <bold>«</bold> <yellow>to view gradient:#6fe461:#3f473f><bold>HollowsEve2021</gradient></bold> <yellow>Items.").decoration(TextDecoration.ITALIC,false)
+                            miniMessage().parse("<white><bold>»</bold> <aqua>Click</aqua> <bold>«</bold> <yellow>to view gradient:#6fe461:#3f473f><bold>HollowsEve2021</gradient></bold> <yellow>Items.").decoration(TextDecoration.ITALIC,false)
                         )
                     }
                 }){
                     it.isCancelled = true
-                    it.whoClicked.playSound(backExitSound, Sound.Emitter.self())
+                    it.whoClicked.playSound(SoundFactory.beeHiveSound, Sound.Emitter.self())
                     hollowsEve2021GUI.show(it.whoClicked)
                 })
                 bindItem('8', exitGUIButton)
@@ -84,7 +87,7 @@ object GUI {
                             if(slot == -1) it.whoClicked.sendMessage("No room in inventory!")
                             val quantity = if(it.isShiftClick) 64 else 1
                             it.whoClicked.inventory.setItem(slot, item.asQuantity(quantity))
-                            it.whoClicked.playSound(backExitSound)
+                            it.whoClicked.playSound(SoundFactory.beeHiveSound)
                     }, enum.ordinal)
                 }
             })
@@ -105,6 +108,12 @@ object GUI {
             })
         }
     }
+
+    companion object {
+        private lateinit var INSTANCE: GUI
+        val mainMenuGUI get() = INSTANCE.mainMenuGUI
+    }
+
 }
 
 class ItemPane(

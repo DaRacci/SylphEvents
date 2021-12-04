@@ -7,13 +7,16 @@ import me.racci.events.factories.ItemFactory
 import me.racci.events.factories.RecipeFactory
 import me.racci.events.listeners.GeneralListener
 import me.racci.events.listeners.HollowEve2021Listener
-import me.racci.raccicore.RacciPlugin
-import me.racci.raccicore.utils.extensions.KotlinListener
+import me.racci.raccicore.api.extensions.KotlinListener
+import me.racci.raccicore.api.lifecycle.LifecycleListener
+import me.racci.raccicore.api.plugin.RacciPlugin
 import org.bukkit.inventory.ItemStack
 import java.util.Locale
 import kotlin.properties.Delegates
 
-class SylphEvents : RacciPlugin() {
+class SylphEvents: RacciPlugin(
+    "&2SylphEvents"
+) {
 
     companion object {
         var instance by Delegates.notNull<SylphEvents>() ; private set
@@ -21,20 +24,20 @@ class SylphEvents : RacciPlugin() {
 
     override suspend fun handleEnable() {
         instance = this
-        ItemFactory.init()
-        RecipeFactory.init()
-        GUI.init()
-    }
-
-    override suspend fun handleDisable() {
-        RecipeFactory.close()
-        ItemFactory.close()
     }
 
     override suspend fun registerListeners(): List<KotlinListener> {
         return listOf(
             HollowEve2021Listener(this),
             GeneralListener()
+        )
+    }
+
+    override suspend fun registerLifecycles(): List<Pair<LifecycleListener<*>, Int>> {
+        return listOf(
+            ItemFactory(this) to 1,
+            GUI(this) to 2,
+            RecipeFactory(this) to 3,
         )
     }
 

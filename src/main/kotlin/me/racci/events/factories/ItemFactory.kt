@@ -1,12 +1,14 @@
 package me.racci.events.factories
 
 import com.willfp.ecoenchants.enchantments.EcoEnchants
+import me.racci.events.SylphEvents
 import me.racci.events.enums.HollowsEve2021
-import me.racci.raccicore.builders.ItemBuilder
+import me.racci.raccicore.api.builders.ItemBuilder
+import me.racci.raccicore.api.extensions.noItalic
+import me.racci.raccicore.api.lifecycle.LifecycleListener
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.ComponentLike
-import net.kyori.adventure.text.format.TextDecoration
-import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
+import net.kyori.adventure.text.minimessage.template.TemplateResolver
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
@@ -16,15 +18,16 @@ import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
-import java.util.EnumMap
-import java.util.UUID
+import java.util.*
 
-object ItemFactory {
+class ItemFactory(
+    override val plugin: SylphEvents
+): LifecycleListener<SylphEvents> {
 
     internal val hollowsEve2021Items = EnumMap<HollowsEve2021, ItemStack>(HollowsEve2021::class.java)
 
     private val namespaces : EnumMap<HollowsEve2021, NamespacedKey> = object : EnumMap<HollowsEve2021, NamespacedKey>(HollowsEve2021::class.java) {init{
-        HollowsEve2021.values().forEach {this[it] = NamespacedKey("sylph", "hollows_eve_2021_${it.name.lowercase()}")}
+        HollowsEve2021.values().forEach {this[it] = NamespacedKey("sylph", "hollows_eve_2021_${it.name.lowercase()}")} // TODO namespaced factory from sylph plugin
     }}
 
     operator fun get(enum: HollowsEve2021) = hollowsEve2021Items[enum]!!
@@ -32,47 +35,37 @@ object ItemFactory {
     operator fun get(enum: HollowsEve2021, getKey: Boolean) = namespaces[enum]!!
 
 
-    fun init() {
+    override suspend fun onEnable() {
         hollowsEve2021()
     }
 
     private fun hollowsEve2021() {
         fun gradient(name: String, bold: Boolean = true) =
                 when(bold) {
-                    true -> MiniMessage.get().parse("<gradient:#6fe461:#3f473f><bold>$name</gradient>").decoration(
-                        TextDecoration.ITALIC, false)
-                    false -> MiniMessage.get().parse("<gradient:#6fe461:#3f473f>$name</gradient>").decoration(TextDecoration.ITALIC, false)
+                    true -> miniMessage().parse("<gradient:#6fe461:#3f473f><bold>$name</gradient>").noItalic()
+                    false -> miniMessage().parse("<gradient:#6fe461:#3f473f>$name</gradient>").noItalic()
                 }
-        val resolver: java.util.function.Function<String, ComponentLike> = java.util.function.Function<String, ComponentLike> { name ->
-            when(name.lowercase()) {
-                "hollowseve" -> MiniMessage.get().parse("<gradient:#6fe461:#3f473f>Hollow's Eve</gradient>")
-                "chuck" -> MiniMessage.get().parse("<white>- <green><bold>Chuck")
-                "gigi" -> MiniMessage.get().parse("<white>- <yellow><bold>Gigi")
-                "unknown" -> MiniMessage.get().parse("<white>- <grey><bold>Unknown")
-                else -> null
-            }
-        }
-
+        val resolver = TemplateResolver.resolving(
+            "hollowseve" to miniMessage().parse("<gradient:#6fe461:#3f473f>Hollow's Eve</gradient>"),
+            "chuck" to miniMessage().parse("<white>- <green><bold>Chuck"),
+            "gigi" to miniMessage().parse("<white>- <yellow><bold>Gigi"),
+            "unknown" to miniMessage().parse("<white>- <grey><bold>Unknown")
+        )
 
         var universalLore: List<Component> = listOf(
             Component.empty(),
-            MiniMessage.get().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").decoration(TextDecoration.ITALIC, false),
+            miniMessage().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").noItalic(),
         )
-
 
         hollowsEve2021Items[HollowsEve2021.CANDY_CORN] = ItemBuilder.from(Material.GOLD_NUGGET) {
             name = gradient("Candy Corn")
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"People swear that it's edible")
-                        .decoration(TextDecoration.ITALIC, false).asComponent(),
-                    MiniMessage.get().parse("<yellow>but sometimes it's hard as a rock.")
-                        .decoration(TextDecoration.ITALIC, false).asComponent(),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>...wonder if it has another use...\" <Chuck>")
-                        .decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"People swear that it's edible").noItalic(),
+                    miniMessage().parse("<yellow>but sometimes it's hard as a rock.").noItalic(),
+                    miniMessage().deserialize("<yellow>...wonder if it has another use...\" <Chuck>", resolver).noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<white>» <green>Used to make Candy Corn Ingots")
-                        .decoration(TextDecoration.ITALIC, false).asComponent(),
+                    miniMessage().parse("<white>» <green>Used to make Candy Corn Ingots").noItalic(),
                 ).plus(universalLore)
             }
             pdc {
@@ -80,26 +73,23 @@ object ItemFactory {
             }
         }
 
-
-
         hollowsEve2021Items[HollowsEve2021.CANDY_CORN_INGOT] = ItemBuilder.from(Material.GOLD_INGOT) {
             name = gradient("Candy Corn Ingot")
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"I don't think I can buy that off you.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>Maybe you could make something?\" <Gigi>").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"I don't think I can buy that off you.").noItalic(),
+                    miniMessage().deserialize("<yellow>Maybe you could make something?\" <Gigi>", resolver).noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<white>» <green>Used to make Candy Corn Armour").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<white>» <green>Used to make Candy Corn Armour").noItalic(),
                 ).plus(universalLore)
             }
         }
 
         universalLore = listOf(
             Component.empty(),
-            MiniMessage.get().parse("<white>» <green>Wear the full set for a massive speed boost").decoration(
-                TextDecoration.ITALIC, false),
+            miniMessage().parse("<white>» <green>Wear the full set for a massive speed boost").noItalic(),
             Component.empty(),
-            MiniMessage.get().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").decoration(TextDecoration.ITALIC, false),
+            miniMessage().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").noItalic()
         )
 
         hollowsEve2021Items[HollowsEve2021.CANDY_CORN_HELMET] = ItemBuilder.from(Material.GOLDEN_HELMET) {
@@ -107,8 +97,8 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>A Helmet made from candy corn").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>You can feel the uncontrolled sugar.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>A Helmet made from candy corn").noItalic(),
+                    miniMessage().parse("<yellow>You can feel the uncontrolled sugar.").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -118,8 +108,8 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>A Chestplate made from candy corn").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>You can feel the uncontrolled sugar.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>A Chestplate made from candy corn").noItalic(),
+                    miniMessage().parse("<yellow>You can feel the uncontrolled sugar.").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -129,8 +119,8 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>Pants made from candy corn").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>You can feel the uncontrolled sugar.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>Pants made from candy corn").noItalic(),
+                    miniMessage().parse("<yellow>You can feel the uncontrolled sugar.").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -140,15 +130,15 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>Boots made from candy corn").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>You can feel the uncontrolled sugar.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>Boots made from candy corn").noItalic(),
+                    miniMessage().parse("<yellow>You can feel the uncontrolled sugar.").noItalic(),
                 ).plus(universalLore)
             }
         }
 
         universalLore = listOf(
             Component.empty(),
-            MiniMessage.get().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").decoration(TextDecoration.ITALIC, false),
+            miniMessage().parse("<white>Part of the <#6fe461>Hollow's Eve <white>event.").noItalic(),
         )
 
         hollowsEve2021Items[HollowsEve2021.ONCE_PREY_BOOTS] = ItemBuilder.from(Material.NETHERITE_BOOTS) {
@@ -162,10 +152,9 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>\"The undead think we have no choice").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>but to fear them. Let's show them just").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("how wrong they are.\" <Chuck>").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"The undead think we have no choice").noItalic(),
+                    miniMessage().parse("<yellow>but to fear them. Let's show them just").noItalic(),
+                    miniMessage().deserialize("how wrong they are.\" <Chuck>", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -181,10 +170,9 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>\"Ah, one of my old crossbows.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Turns arrows into shards of pure silver.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("Let's see you put it to use\" <Chuck>").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"Ah, one of my old crossbows.").noItalic(),
+                    miniMessage().parse("<yellow>Turns arrows into shards of pure silver.").noItalic(),
+                    miniMessage().deserialize("Let's see you put it to use\" <Chuck>", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -203,10 +191,8 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>\"When the soul sands dry, and the innocent sing.").decoration(
-                        TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>The undead shall hear me. And hear my ring\" <Unknown>").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"When the soul sands dry, and the innocent sing.").noItalic(),
+                    miniMessage().deserialize("<yellow>The undead shall hear me. And hear my ring\" <Unknown>", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -224,13 +210,10 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>\"A grim tradition. In parts of the mountains,").decoration(
-                        TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>it was thought being buried headless could").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>save you. I hope this axe finds better purpose").decoration(
-                        TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>now.\" <Chuck>").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"A grim tradition. In parts of the mountains,").noItalic(),
+                    miniMessage().parse("<yellow>it was thought being buried headless could").noItalic(),
+                    miniMessage().parse("<yellow>save you. I hope this axe finds better purpose").noItalic(),
+                    miniMessage().deserialize("<yellow>now.\" <Chuck>", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -247,9 +230,8 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>\"Gets cold enough, the hardest soil can").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>feel like the average slate.\" - Chuck").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"Gets cold enough, the hardest soil can").noItalic(),
+                    miniMessage().deserialize("<yellow>feel like the average slate.\" - Chuck", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -259,10 +241,10 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"It's an old tradition to go around in costume,").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>asking for candy. Go on, give it a try\" <Chuck>").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"It's an old tradition to go around in costume,").noItalic(),
+                    miniMessage().deserialize("<yellow>asking for candy. Go on, give it a try\" <Chuck>", resolver).noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>Right-click on <green><bold>Chuck</bold><yellow>, <yellow><bold>Gigi</bold><yellow>, or <gold><bold>Bug</bold> <yellow>to get candy!").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>Right-click on <green><bold>Chuck</bold><yellow>, <yellow><bold>Gigi</bold><yellow>, or <gold><bold>Bug</bold> <yellow>to get candy!").noItalic(),
                 )
             }
         }
@@ -272,10 +254,10 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>A gummy fish! Come in <gold>orange<yellow>, <red>cherry<yellow>, and <dark_purple>grape").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Popular among young children and Merlings").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>A gummy fish! Come in <gold>orange<yellow>, <red>cherry<yellow>, and <dark_purple>grape").noItalic(),
+                    miniMessage().parse("<yellow>Popular among young children and Merlings").noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<white>» <green>Grants bonus food and speed on consumption").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<white>» <green>Grants bonus food and speed on consumption").noItalic(),
                 )
             }
         }
@@ -285,10 +267,10 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>Native berries with a candy coating!").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Favoured candy of the Fae and Beastfolk.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>Native berries with a candy coating!").noItalic(),
+                    miniMessage().parse("<yellow>Favoured candy of the Fae and Beastfolk.").noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<white>» <green>Grants bonus food and speed on consumption").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<white>» <green>Grants bonus food and speed on consumption").noItalic(),
                 )
             }
         }
@@ -298,10 +280,10 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>A bowl of candy coated chocolates!").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Invented by humanity for long treks.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>A bowl of candy coated chocolates!").noItalic(),
+                    miniMessage().parse("<yellow>Invented by humanity for long treks.").noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<white>» <green>Grants bonus food and speed on consumption").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<white>» <green>Grants bonus food and speed on consumption").noItalic(),
                 )
             }
         }
@@ -318,9 +300,9 @@ object ItemFactory {
             lore {
                 listOf(
                     Component.empty(),
-                    MiniMessage.get().parse("<yellow>The sword of a once great hero.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Even still, it wards off the dark").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>that has come to taint it.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>The sword of a once great hero.").noItalic(),
+                    miniMessage().parse("<yellow>Even still, it wards off the dark").noItalic(),
+                    miniMessage().deserialize("<yellow>that has come to taint it.", resolver).noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -330,16 +312,15 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"What do you think?").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>I let Hoggers help out on this one.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.builder().placeholderResolver(resolver).build().parse("<yellow>Little guy has talent, I'll admit it.\" <Gigi>").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"What do you think?").noItalic(),
+                    miniMessage().parse("<yellow>I let Hoggers help out on this one.").noItalic(),
+                    miniMessage().deserialize("<yellow>Little guy has talent, I'll admit it.\" <Gigi>", resolver).noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<green>Gives the wearer Invisibility").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<green>when worn. <dark_red>Warning: <red>Does not").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<red>effect the hat itself.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<green>Gives the wearer Invisibility").noItalic(),
+                    miniMessage().parse("<green>when worn. <dark_red>Warning: <red>Does not").noItalic(),
+                    miniMessage().parse("<red>effect the hat itself.").noItalic(),
                     Component.empty(),
-                    MiniMessage.get().parse("<#6fe461>Hollow's Eve <green>2021.").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<#6fe461>Hollow's Eve <green>2021.").noItalic(),
                 )
             }
         }
@@ -357,9 +338,9 @@ object ItemFactory {
             texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2RkOWE3NDQ0NTNhNDUzOGY1NzU2Y2JjNDZmYTRjMzk5NGI2N2I4MGZlM2I4YWYwN2IwNDg2YWEwMjU0MDkyZiJ9fX0="
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"Strider Man, Strider Man,").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>does whatever a Strider").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>can!\" <white>- <red><bold>Hoggers").decoration(TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"Strider Man, Strider Man,").noItalic(),
+                    miniMessage().parse("<yellow>does whatever a Strider").noItalic(),
+                    miniMessage().parse("<yellow>can!\" <white>- <red><bold>Hoggers").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -376,10 +357,9 @@ object ItemFactory {
             texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzljZWRmNzgwZTVhYjAxYTNiYjY5ZjM3ZjBkNzc4OGE0YTM1MTNjYjNhMmU0Y2Q4OGJiNjA1MWI0MjdhYTgzMSJ9fX0="
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"Humans thing they're funny, but").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Everyone else things they're scary.").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>It's weeeeeird!\" <white>- <red><bold>Hoggers").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"Humans thing they're funny, but").noItalic(),
+                    miniMessage().parse("<yellow>Everyone else things they're scary.").noItalic(),
+                    miniMessage().parse("<yellow>It's weeeeeird!\" <white>- <red><bold>Hoggers").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -396,10 +376,9 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"I think these are for scaring off").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>birds, but an Angel told me they're").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>scary, so here they are!\" <white>- <red><bold>Hoggers").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"I think these are for scaring off").noItalic(),
+                    miniMessage().parse("<yellow>birds, but an Angel told me they're").noItalic(),
+                    miniMessage().parse("<yellow>scary, so here they are!\" <white>- <red><bold>Hoggers").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -416,10 +395,9 @@ object ItemFactory {
             glow
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"My best work yet! Is it realistic?").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Is it gooooorey ...I've never seen").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>one. I hope it is...\" <white>- <red><bold>Hoggers").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"My best work yet! Is it realistic?").noItalic(),
+                    miniMessage().parse("<yellow>Is it gooooorey ...I've never seen").noItalic(),
+                    miniMessage().parse("<yellow>one. I hope it is...\" <white>- <red><bold>Hoggers").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -440,9 +418,8 @@ object ItemFactory {
             )
             lore {
                 listOf(
-                    MiniMessage.get().parse("<yellow>\"A sword made out of rock candy?").decoration(TextDecoration.ITALIC, false),
-                    MiniMessage.get().parse("<yellow>Eh. I've fought with worse.\" <white>- <lime><bold>Dylan").decoration(
-                        TextDecoration.ITALIC, false),
+                    miniMessage().parse("<yellow>\"A sword made out of rock candy?").noItalic(),
+                    miniMessage().parse("<yellow>Eh. I've fought with worse.\" <white>- <lime><bold>Dylan").noItalic(),
                 ).plus(universalLore)
             }
         }
@@ -462,8 +439,15 @@ object ItemFactory {
         }
     }
 
-    fun close() {
+    override suspend fun onDisable() {
         hollowsEve2021Items.clear()
+    }
+
+    companion object {
+        private lateinit var INSTANCE: ItemFactory
+        val hollowsEve2021Items get() = INSTANCE.hollowsEve2021Items
+        operator fun get(enum: HollowsEve2021) = INSTANCE[enum]
+        operator fun get(enum: HollowsEve2021, getKey: Boolean) = INSTANCE[enum, true]
     }
 
 }

@@ -7,13 +7,11 @@ import kotlinx.coroutines.withContext
 import me.racci.events.SylphEvents
 import me.racci.events.enums.HollowsEve2021
 import me.racci.events.factories.ItemFactory
-import me.racci.raccicore.utils.extensions.KotlinListener
-import me.racci.raccicore.utils.extensions.pdc
+import me.racci.raccicore.api.extensions.KotlinListener
 import org.bukkit.attribute.Attribute
 import org.bukkit.attribute.AttributeModifier
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
-import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
@@ -94,7 +92,7 @@ class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
             }
 
             if(newPDC?.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) == true) {
-                if(event.player.inventory.armorContents.toList().filter { it.pdc.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) }.size == 4) {
+                if(event.player.inventory.armorContents.toList().filter { it.persistentDataContainer.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) }.size == 4) {
                     event.player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.apply {
                         if(!this.modifiers.contains(speedModifier)) {
                             event.player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.addModifier(speedModifier)
@@ -109,9 +107,9 @@ class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onConsumeTreat(event: PlayerItemConsumeEvent) {
-        when(event.item.pdc) {
-            ItemFactory[HollowsEve2021.GUMMY_FISH].pdc, ItemFactory[HollowsEve2021.CANDIED_BERRIES].pdc -> event.player.addPotionEffects(foodPotions[0])
-            ItemFactory[HollowsEve2021.BOWL_OF_CHOCOLATES].pdc                                                              -> event.player.addPotionEffects(foodPotions[1])
+        when(event.item.persistentDataContainer) {
+            ItemFactory[HollowsEve2021.GUMMY_FISH].persistentDataContainer, ItemFactory[HollowsEve2021.CANDIED_BERRIES].persistentDataContainer -> event.player.addPotionEffects(foodPotions[0])
+            ItemFactory[HollowsEve2021.BOWL_OF_CHOCOLATES].persistentDataContainer                                                              -> event.player.addPotionEffects(foodPotions[1])
             else                                                                                                                                -> return
         }
     }

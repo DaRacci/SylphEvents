@@ -1,6 +1,6 @@
 package me.racci.events.listeners
 
-import me.racci.raccicore.utils.extensions.KotlinListener
+import me.racci.raccicore.api.extensions.KotlinListener
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.BlockPlaceEvent

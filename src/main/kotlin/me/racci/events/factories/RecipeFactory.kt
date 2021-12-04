@@ -4,23 +4,26 @@ import com.github.shynixn.mccoroutine.asyncDispatcher
 import kotlinx.coroutines.withContext
 import me.racci.events.SylphEvents
 import me.racci.events.enums.HollowsEve2021
-import me.racci.raccicore.utils.extensions.addRecipe
+import me.racci.raccicore.api.lifecycle.LifecycleListener
+import org.bukkit.Bukkit.addRecipe
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.ShapedRecipe
 
-object RecipeFactory {
+class RecipeFactory(
+    override val plugin: SylphEvents
+): LifecycleListener<SylphEvents> {
 
     private val RECIPE_ARRAY = ArrayList<NamespacedKey>()
 
-    suspend fun init() {
+    override suspend fun onEnable() {
 
         hollowsEveRecipes()
 
     }
 
-    fun close() {
+    override suspend fun onDisable() {
         RECIPE_ARRAY.clear()
     }
 

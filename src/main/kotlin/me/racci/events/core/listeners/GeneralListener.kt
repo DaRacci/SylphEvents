@@ -1,4 +1,4 @@
-package me.racci.events.listeners
+package me.racci.events.core.listeners
 
 import me.racci.raccicore.api.extensions.KotlinListener
 import org.bukkit.event.EventHandler

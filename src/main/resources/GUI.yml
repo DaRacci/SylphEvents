@@ -1,0 +1,36 @@
+MainMenu:
+  Title: "Event Item GUI"
+  Size: 1
+  Layout:
+    - 120000008
+  GuiPlacements:
+    0: GRAY_STAINED_GLASS_PANE
+    1: HollowsEve2021
+    2: EverBright2021
+    8: ExitButton
+EventMenuBottom:
+  Layout:
+    - 121232121
+  Replacements:
+    1: WHITE_STAINED_GLASS_PANE
+    2: GRAY_STAINED_GLASS_PANE
+    3: ExitButton
+EventMenus:
+  HollowsEve2021:
+    Item:
+      Type: ROTTEN_FLESH
+      Name: "<gradient:#6fe461:#3f473f><bold>Hollow's Eve 2021</gradient></bold>"
+      Lore:
+        - ""
+        - "<white><bold>»</bold> <aqua>Click</aqua> <bold>«</bold> <yellow>to view <gradient:#6fe461:#3f473f><bold>Hollow's Eve 2021</gradient></bold> <yellow>Items."
+    Title: "Hollow's Eve 2021 Items"
+    Size: 4
+  EverBright2021:
+    Item:
+      Type: SNOWBALL
+      Name: "<gradient:#6fe461:#3f473f><bold>EverBright 2021</gradient></bold>"
+      Lore:
+        - ""
+        - "<white><bold>»</bold> <aqua>Click</aqua> <bold>«</bold> <yellow>to view <gradient:#6fe461:#3f473f><bold>EverBright 2021</gradient></bold> <yellow>Items."
+    Title: "EverBright 2021 Items"
+    Size: 4

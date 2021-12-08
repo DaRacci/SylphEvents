@@ -1,13 +1,14 @@
-package me.racci.events.listeners
+package me.racci.events.core.listeners
 
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent
 import com.github.shynixn.mccoroutine.asyncDispatcher
 import com.github.shynixn.mccoroutine.minecraftDispatcher
 import kotlinx.coroutines.withContext
-import me.racci.events.SylphEvents
-import me.racci.events.enums.HollowsEve2021
-import me.racci.events.factories.ItemFactory
+import me.racci.events.core.SylphEvents
+import me.racci.events.api.factories.EventItemFactory
 import me.racci.raccicore.api.extensions.KotlinListener
+import me.racci.sylph.core.Sylph
+import org.bukkit.NamespacedKey
 import org.bukkit.attribute.Attribute
 import org.bukkit.attribute.AttributeModifier
 import org.bukkit.event.EventHandler
@@ -16,7 +17,7 @@ import org.bukkit.event.player.PlayerItemConsumeEvent
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import java.util.UUID
+import java.util.*
 
 class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
 
@@ -34,8 +35,10 @@ class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
         false,
         false,
         false,
-        ItemFactory[HollowsEve2021.HOLLOWS_EVE_HAT, true]
+        EventItemFactory["HOLLOWS_EVE_HAT", true]
     )
+
+    private val candyCornKey: NamespacedKey = Sylph.namespacedKey("hollows_eve_2021_candy_corn_armour")
 
     private val foodPotions = arrayOf(
         arrayListOf(
@@ -80,26 +83,26 @@ class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
 
 
         if(newPDC != oldPDC) {
-            if(oldPDC?.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) == true) {
+            if(oldPDC?.has(candyCornKey, PersistentDataType.BYTE) == true) {
                 event.player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.apply {
                     if(this.modifiers.contains(speedModifier)) {
                         removeModifier(speedModifier)
                     }
                 }
-            } else if(oldPDC?.has(ItemFactory[HollowsEve2021.HOLLOWS_EVE_HAT, true], PersistentDataType.BYTE) == true
-                      && event.player.getPotionEffect(PotionEffectType.INVISIBILITY)?.key == ItemFactory[HollowsEve2021.HOLLOWS_EVE_HAT, true]) {
+            } else if(oldPDC?.has(EventItemFactory["HollowsEve2021.HOLLOWS_EVE_HAT", true], PersistentDataType.BYTE) == true
+                      && event.player.getPotionEffect(PotionEffectType.INVISIBILITY)?.key == EventItemFactory["HollowsEve2021.HOLLOWS_EVE_HAT", true]) {
                 withContext(plugin.minecraftDispatcher) {event.player.removePotionEffect(PotionEffectType.INVISIBILITY)}
             }
 
-            if(newPDC?.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) == true) {
-                if(event.player.inventory.armorContents.toList().filter { it.persistentDataContainer.has(ItemFactory[HollowsEve2021.CANDY_CORN_ARMOUR, true], PersistentDataType.BYTE) }.size == 4) {
+            if(newPDC?.has(candyCornKey, PersistentDataType.BYTE) == true) {
+                if(event.player.inventory.armorContents.toList().filter { it.persistentDataContainer.has(candyCornKey, PersistentDataType.BYTE) }.size == 4) {
                     event.player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.apply {
                         if(!this.modifiers.contains(speedModifier)) {
                             event.player.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.addModifier(speedModifier)
                         }
                     }
                 }
-            } else if(newPDC?.has(ItemFactory[HollowsEve2021.HOLLOWS_EVE_HAT, true], PersistentDataType.BYTE) == true) {
+            } else if(newPDC?.has(EventItemFactory["HollowsEve2021.HOLLOWS_EVE_HAT", true], PersistentDataType.BYTE) == true) {
                 withContext(plugin.minecraftDispatcher) {event.player.addPotionEffect(invisibilityPotion)}
             }
         }
@@ -107,10 +110,10 @@ class HollowEve2021Listener(private val plugin: SylphEvents) : KotlinListener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onConsumeTreat(event: PlayerItemConsumeEvent) {
-        when(event.item.persistentDataContainer) {
-            ItemFactory[HollowsEve2021.GUMMY_FISH].persistentDataContainer, ItemFactory[HollowsEve2021.CANDIED_BERRIES].persistentDataContainer -> event.player.addPotionEffects(foodPotions[0])
-            ItemFactory[HollowsEve2021.BOWL_OF_CHOCOLATES].persistentDataContainer                                                              -> event.player.addPotionEffects(foodPotions[1])
-            else                                                                                                                                -> return
-        }
+        if(event.item.persistentDataContainer.has(EventItemFactory["HollowsEve2021.GUMMY_FISH", true], PersistentDataType.BYTE)
+            || event.item.persistentDataContainer.has(EventItemFactory["HollowsEve2021.CANDIED_BERRIES", true], PersistentDataType.BYTE)
+        ) event.player.addPotionEffects(foodPotions[0])
+        else if(event.item.persistentDataContainer.has(EventItemFactory["HollowsEve2021.BOWL_OF_CHOCOLATES", true], PersistentDataType.BYTE)) event.player.addPotionEffects(foodPotions[1])
     }
+
 }

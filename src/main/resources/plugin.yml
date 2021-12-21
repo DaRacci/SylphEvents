@@ -1,8 +1,0 @@
-name: SylphEvents
-version: '${version}'
-main: me.racci.events.core.SylphEvents
-api-version: 1.18
-load: POSTWORLD
-authors: [ Racci ]
-depend: [ RacciCore, Sylph ]
-softdepend: [ EcoEnchants, Citizens ]

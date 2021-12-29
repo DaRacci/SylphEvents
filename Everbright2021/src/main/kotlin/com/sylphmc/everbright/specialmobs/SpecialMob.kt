@@ -35,7 +35,7 @@ abstract class SpecialMob<T: Mob>(val baseEntity: T) {
 
     open fun beforeWrap() {}
 
-    open fun afterSpawn() {}
+    open suspend fun afterSpawn() {}
 
     /**
      * Called at a fixed amount of ticks while the blood night is active.

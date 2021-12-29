@@ -23,7 +23,7 @@ class FoodListener: KotlinListener {
             PotionEffect(PotionEffectType.SPEED, 60, 5, false, false, false),
         ),
         arrayListOf(
-            PotionEffect(PotionEffectType.FAST_DIGGING, 60, 3, false, false, false)
+            PotionEffect(PotionEffectType.FAST_DIGGING, 400, 3, false, false, false)
         )
     )
 

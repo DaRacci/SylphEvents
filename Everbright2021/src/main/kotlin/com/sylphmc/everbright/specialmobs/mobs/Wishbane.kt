@@ -2,12 +2,11 @@ package com.sylphmc.everbright.specialmobs.mobs
 
 import com.sylphmc.events.api.factories.EventItemFactory
 import com.sylphmc.events.core.SylphEvents
+import com.sylphmc.everbright.mobmanager.wishbane
 import com.sylphmc.everbright.specialmobs.MasterMob
 import com.sylphmc.everbright.utils.SpecialMobUtil
 import com.sylphmc.everbright.utils.uuidBossBarNamespace
-import me.racci.raccicore.api.extensions.asItemStack
-import me.racci.raccicore.api.extensions.coloured
-import me.racci.raccicore.api.extensions.parse
+import me.racci.raccicore.api.extensions.*
 import me.racci.raccicore.api.utils.now
 import net.kyori.adventure.text.Component
 import org.bukkit.*
@@ -18,6 +17,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityTargetEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.bukkit.util.Vector
@@ -30,8 +30,10 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
     private var lastMinion = 0L
     private var lastTeleport = 0L
     private var lastPlayerCheck = 0L
-    private var lastDamager: Player? = null
+    var lastDamager: Player? = null
+    open val boolean: Boolean = false
 
+    open val minionClass get() = WishbaneMinion::class.java
     open val teleportCooldown get() = 20
     open val minionCooldown get() = 30
     open val minionLimit get() = 6
@@ -40,7 +42,7 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
 
     override val maxHealth get() = 3000.0
     override val armour get() = 10.0
-    override val attackDamage get() = 40.0
+    override val attackDamage get() = 30.0
     override val movementSpeedMultiplier get() = 0.5
     override val potions
         get() = listOf(PotionEffect(PotionEffectType.REGENERATION, Int.MAX_VALUE, 0, true, false))
@@ -52,9 +54,7 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
             Material.DIAMOND.asItemStack(r.nextInt(8, 16)),
             Material.MUTTON.asItemStack(32)
         )
-
-//    override val spawnAnnouncement: Component?
-//        get() = Lang["prefix.prefix"].append("<aqua>A ")
+    open val xp: Int = 4000
 
     open val bossBar = Bukkit.createBossBar(
         uuidBossBarNamespace(baseEntity),
@@ -66,7 +66,9 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
     override fun beforeWrap() {
         baseEntity.isAngry = true
         baseEntity.isRabid = true
+        baseEntity.isGlowing = true
         bossBar.progress = 1.0
+        baseEntity.pdc.set(wishbane, PersistentDataType.BYTE, 1.toByte())
     }
 
     override fun onTargetEvent(event: EntityTargetEvent) {
@@ -76,11 +78,13 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
 
     override fun onDamageByEntity(event: EntityDamageByEntityEvent) {
         val damager = event.damager
-        val entity = event.entity as? LivingEntity ?: return
-         if (damager is Projectile && damager.shooter is Player) {
-            lastDamager = damager.shooter as Player
-        }
-        var hp = entity.health - event.finalDamage
+
+        lastDamager = if(damager is Projectile
+            && damager.shooter is Player
+        ) { damager.shooter as Player
+        } else damager as? Player ?: return
+
+        var hp = baseEntity.health - event.finalDamage
         if (hp < 0.0) hp = 0.0
         hp = floor(hp * 100.0) / 100.0
         hp = hp * 100.0 / maxHealth
@@ -97,8 +101,10 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
     }
 
     override fun onDeath(event: EntityDeathEvent) {
-        event.drops.addAll(drops)
-        bossBar.isVisible = false
+//        println("Killed!")
+        drops.forEach(event.entity.location::dropItemNaturally)
+        event.droppedExp = xp
+        Bukkit.removeBossBar(bossBar.key)
     }
 
     override fun tick() {
@@ -121,21 +127,12 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
         if(now - lastMinion > minionCooldown
             && minions.size < minionLimit
         ) {
-//            println("Trying to summon minions")
             val loc = baseEntity.location.clone()
-            var summonLoc: Location? = null
-//            for(i in 0..10) {
-//                println("Retrying location attempt $i")
             val fuzz = Vector(r.nextDouble(-5.0, 5.0), 0.0, r.nextDouble(-5.0, 5.0))
             val var1 = loc.world.getBlockAt(loc.add(fuzz))
-//            val var2 = var1.getRelative(0, 1, 0)
-//            if (var1.type != Material.AIR || var2.type != Material.AIR) continue
-            summonLoc = var1.location
-//                break
-//            }
-//            if(summonLoc == null) return
+            val summonLoc = var1.location
             SylphEvents.launch {
-                val minion = SpecialMobUtil.spawnMinion<Vex>(this@Wishbane, WishbaneMinion::class.java, summonLoc)
+                val minion = SpecialMobUtil.spawnMinion<Vex>(this@Wishbane, minionClass, summonLoc)
                 SpecialMobUtil.spawnParticlesAround(minion, Particle.CAMPFIRE_SIGNAL_SMOKE, 10)
                 minion.playEffect(EntityEffect.ENTITY_POOF)
                 minions.add(minion)
@@ -145,17 +142,23 @@ open class Wishbane(entity: Wolf): MasterMob<Wolf>(entity) {
         }
         val player = lastDamager ?: return
         if(now - lastTeleport > teleportCooldown) {
-            if (baseEntity.location.distance(player.location) > 50.0) {
+            if(baseEntity.world != player.world) return
+            if (baseEntity.location.distance(player.location) > 100.0) {
                 lastDamager = null
                 return
             }
             lastTeleport = now().epochSeconds
             val loc = player.location
             loc.add(player.eyeLocation.direction.normalize().multiply(-0.7)).add(0.0, 0.5, 0.0)
-            baseEntity.teleportAsync(loc)
-            baseEntity.target = player
-            baseEntity.world.playSound(loc, Sound.ENTITY_GHAST_SCREAM, 1.0f, 1.0f)
-            baseEntity.world.playSound(loc, Sound.ITEM_CHORUS_FRUIT_TELEPORT, 1.0f, 1.0f)
+            SylphEvents.launch {
+                baseEntity.teleport(loc)
+                if(boolean) {
+                    baseEntity.location.createExplosion(baseEntity, 4f, false, false)
+                }
+                baseEntity.target = player
+                baseEntity.world.playSound(loc, Sound.ENTITY_GHAST_SCREAM, 1.0f, 1.0f)
+                baseEntity.world.playSound(loc, Sound.ITEM_CHORUS_FRUIT_TELEPORT, 1.0f, 1.0f)
+            }
         }
     }
 

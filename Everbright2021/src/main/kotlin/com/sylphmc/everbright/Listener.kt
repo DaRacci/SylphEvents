@@ -1,7 +1,6 @@
 package com.sylphmc.everbright
 
 import com.sylphmc.events.api.factories.EventItemFactory
-import com.sylphmc.everbright.GUI.Companion.luckGUI
 import com.sylphmc.everbright.mobmanager.MobManager
 import com.sylphmc.everbright.specialmobs.factory.SpecialMobRegistry
 import com.sylphmc.everbright.utils.NO_TOUCH
@@ -18,25 +17,25 @@ import net.kyori.adventure.title.Title
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.entity.LivingEntity
-import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.BlockPlaceEvent
-import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import su.nightexpress.goldencrates.api.GoldenCratesAPI
 import java.time.Duration
-import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
 class Listener: KotlinListener {
 
+    val offerings = listOf(Material.NETHER_WART_BLOCK, Material.SOUL_SAND)
+    val keys = listOf(EventItemFactory["DARK_OFFERING", true], EventItemFactory["PRIMORDIAL_OFFERING", true])
+
     @EventHandler(ignoreCancelled = true, priority = EventPriority.NORMAL)
     fun onOffering(event: BlockPlaceEvent) {
-        if(event.itemInHand.type != Material.NETHER_WART_BLOCK
-            || !event.itemInHand.persistentDataContainer.keys.contains(EventItemFactory["DARK_OFFERING", true])
+        if(event.itemInHand.type !in offerings
+            || event.itemInHand.persistentDataContainer.keys.all{it !in keys}
         ) return
         event.setBuild(false)
         if(HookManager.landsManager?.isClaimed(event.block.location) == true) {
@@ -45,7 +44,11 @@ class Listener: KotlinListener {
             return
         }
         event.player.inventory.setItem(event.hand, event.itemInHand.asQuantity(event.itemInHand.amount -1))
-        val factory = SpecialMobRegistry.getMobFactoryByName("ElderWishbane")!!
+
+        val factory = SpecialMobRegistry.getMobFactoryByName(
+            if(event.itemInHand.type == Material.NETHER_WART_BLOCK) "ElderWishbane"
+            else "AncientWishbane"
+        )!!
         val bane = event.block.world.spawn(event.block.location.add(0.0, 1.0, 0.0), factory.entityType.entityClass!!) {
             it.persistentDataContainer[NO_TOUCH, PersistentDataType.BYTE] = 1.toByte()
             MobManager.wrapMob(it as LivingEntity, factory)
@@ -158,17 +161,5 @@ class Listener: KotlinListener {
             items.forEach {event.player.location.dropItemNaturally(it.value)}
         }
     }
-
-//    @EventHandler
-//    fun onLuckInteract(event: PlayerInteractEntityEvent) {
-//        println("Touch entity")
-//        println("15b0b9c7-ae98-4ae3-b182-41a7e1761902")
-//        println(event.rightClicked.uniqueId.toString())
-//        if(event.rightClicked.uniqueId != UUID.fromString("15b0b9c7-ae98-4ae3-b182-41a7e1761902")) return
-//        println("Thats luck")
-//        event.cancel()
-//        println("Showing GUI")
-//        luckGUI.show(event.player)
-//    }
 
 }

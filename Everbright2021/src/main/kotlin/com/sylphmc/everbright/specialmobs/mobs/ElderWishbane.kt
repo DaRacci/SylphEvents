@@ -17,15 +17,16 @@ import org.bukkit.potion.PotionEffectType
 
 class ElderWishbane(entity: Wolf): Wishbane(entity) {
 
-    override val name: Component get() = "<gold>ElderWishbane".parse()
+    override val name: Component get() = "<gold>Elder Wishbane".parse()
 
     override val maxHealth get() = 10000.0
     override val armour get() = 15.0
-    override val attackDamage get() = 60.0
+    override val attackDamage get() = 45.0
 
     override val minionLimit get() = 15
     override val minionCooldown get() = 15
     override val teleportCooldown get() = 10
+    override val boolean = true
 
     override val potions: List<PotionEffect>
         get() = listOf(PotionEffect(PotionEffectType.REGENERATION, Int.MAX_VALUE, 1, true, false))
@@ -33,10 +34,12 @@ class ElderWishbane(entity: Wolf): Wishbane(entity) {
     override val drops: List<ItemStack>
         get() = listOf(
             EventItemFactory["PRESENT"].cachedItem.asQuantity(8),
-            EventItemFactory["TATTERED_HIDE"].cachedItem,
+            EventItemFactory["WRITHING_HIDE"].cachedItem,
             Material.DIAMOND.asItemStack(r.nextInt(16, 32)),
             Material.MUTTON.asItemStack(128),
-        ).also{if(r.nextInt(0, 101) < 33) it.plus(EventItemFactory["HUNGERING_JAW"].cachedItem)}
+        ).also{if(r.nextInt(0, 101) < 33) it.plus(EventItemFactory["HUNGERING_JAWS"].cachedItem)}
+
+    override val xp = 16000
 
     override val bossBar = Bukkit.createBossBar(
         uuidBossBarNamespace(baseEntity),

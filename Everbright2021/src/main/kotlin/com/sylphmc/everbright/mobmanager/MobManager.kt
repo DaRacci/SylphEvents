@@ -1,34 +1,46 @@
 package com.sylphmc.everbright.mobmanager
 
 import com.sylphmc.events.core.SylphEvents
+import com.sylphmc.everbright.specialmobs.MasterMob
 import com.sylphmc.everbright.specialmobs.SpecialMob
 import com.sylphmc.everbright.specialmobs.factory.MobFactory
 import com.sylphmc.everbright.specialmobs.mobs.Wishbane
 import com.sylphmc.everbright.utils.NO_TOUCH
 import com.sylphmc.everbright.utils.SpecialMobUtil
 import com.sylphmc.everbright.utils.uuidBossBarNamespace
+import kotlinx.coroutines.delay
 import me.racci.raccicore.api.extensions.*
 import me.racci.raccicore.api.lifecycle.LifecycleListener
 import me.racci.sylph.api.utils.SPECIAL
+import me.racci.sylph.core.Sylph
 import me.racci.sylph.core.data.Lang
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.Bukkit
+import org.bukkit.Chunk
+import org.bukkit.Location
 import org.bukkit.World
+import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityTameEvent
+import org.bukkit.event.vehicle.VehicleEnterEvent
 import org.bukkit.event.world.ChunkLoadEvent
+import org.bukkit.event.world.ChunkUnloadEvent
 import org.bukkit.persistence.PersistentDataType
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
+
+val wishbane = Sylph.namespacedKey("wishbane")
+val lost = Sylph.namespacedKey("lost_mob")
+
 class MobManager(
-    override val plugin: SylphEvents
+    override val plugin: SylphEvents,
 ): KotlinListener, LifecycleListener<SylphEvents> {
 
     override suspend fun onDisable() {
@@ -55,7 +67,13 @@ class MobManager(
             || event.location.y < 60
         ) return
 
-        if(random.nextInt(101) > 3) return
+        if(random.nextInt(101) > 1) return
+
+        val nearby = event.location.getNearbyEntities(75.0, 50.0, 75.0)
+        for(mob in nearby) {
+            if(!mob.pdc.keys.contains(wishbane)) continue
+            return
+        }
 
         val factory = MobFactory[Wishbane::class.java] ?: return
 
@@ -67,7 +85,7 @@ class MobManager(
             } as LivingEntity
         } else event.entity
 
-        for(player in mob.getNearbyEntities(100.0, 75.0, 100.0)) {
+        for(player in nearby) {
             if(player !is Player) continue
             player.msg(Lang["prefix.prefix"].append(" <aqua>A Wishbane has appeared nearby, be quick to find and defeat the beast!".parse()).decoration(TextDecoration.BOLD, false))
             player.playSound(Sound.sound(Key.key("entity.ender_dragon.growl"), Sound.Source.HOSTILE, 1f, 1f), Sound.Emitter.self())
@@ -107,13 +125,47 @@ class MobManager(
     }
 
     @EventHandler
-    private fun onChunkLoad(event: ChunkLoadEvent) {
+    private fun onEnterBoat(event: VehicleEnterEvent) {
+        if(SpecialMobUtil.isSpecialMob(event.entered)) event.cancel()
+    }
+
+    @EventHandler // TODO Remove minions when unloading master type
+    private fun onChunkUnload(event: ChunkUnloadEvent) {
         val worldMobs = getWorldMobs(event.world)
-        event.chunk.entities.forEach {
-            val remove = worldMobs.remove(it.uniqueId)
-            if (!SpecialMobUtil.isSpecialMob(it)) return
-            if (remove != null) remove.remove() else it.remove()
-        }
+        event.chunk.entities.asSequence()
+                .mapNotNull {
+                    val r = worldMobs.mobs.remove(it.uniqueId)
+                    worldMobs.tickQueue.remove(r)
+                    r
+                }
+                .forEach {
+                    plugin.log.debug("Unloading ${it.baseEntity.name} as type ${it::class.java.simpleName}")
+                    it.baseEntity.pdc.set(lost, PersistentDataType.STRING, it::class.java.name)
+                    if(it is MasterMob<*>) {
+                        it.minions.forEach(::remove)
+                    }
+                }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private suspend fun onChunkLoad(event: ChunkLoadEvent) {
+        val worldMobs = getWorldMobs(event.world)
+        val chunkCoord = ChunkCoord(event.chunk)
+        delay(100)
+        chunkCoord.chunk?.entities?.asSequence()
+                ?.filter{plugin.log.debug("Trying to recover ${it.name} with keys ${it.pdc.keys}"); it.pdc.keys.contains(lost)}
+                ?.forEach {
+//                    println("Recovering lost mob ${it.name}")
+                    val factory = MobFactory[Class.forName(it.pdc[lost, PersistentDataType.STRING]) as Class<SpecialMob<*>>] ?: return@forEach
+//                    println("Mob is of type $factory")
+                    it.pdc.keys.remove(lost)
+                    val f = factory.factory.invoke(it as LivingEntity)
+                    it.getAttribute(Attribute.GENERIC_MAX_HEALTH)!!.baseValue = f.maxHealth
+                    it.getAttribute(Attribute.GENERIC_ARMOR)!!.baseValue = f.armour
+                    it.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE)!!.baseValue = f.attackDamage
+//                    println("Invoked mob factory for new ${factory.clazz}")
+                    worldMobs.put(it.uniqueId, f)
+                }
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -127,7 +179,7 @@ class MobManager(
 
     fun wrapMob(
         entity: Entity,
-        mobFactory: MobFactory
+        mobFactory: MobFactory,
     ) {
         if (entity !is LivingEntity
             || SpecialMobUtil.isSpecialMob(entity)
@@ -155,7 +207,7 @@ class MobManager(
     }
 
     fun getWorldMobs(
-        world: World
+        world: World,
     ) = mobRegistry.computeIfAbsent(world.name) {WorldMobs()}
 
     private fun remove(entity: Entity) {
@@ -167,12 +219,65 @@ class MobManager(
 
         fun wrapMob(
             entity: Entity,
-            mobFactory: MobFactory
+            mobFactory: MobFactory,
         ) = INSTANCE.wrapMob(entity, mobFactory)
 
         fun getWorldMobs(
-            world: World
+            world: World,
         ) = INSTANCE.getWorldMobs(world)
     }
 
+}
+
+class ChunkCoord(
+    val worldUUID: UUID,
+    val x: Int,
+    val z: Int,
+) {
+    constructor(chunk: Chunk): this(chunk.world.uid, chunk.x, chunk.z)
+    constructor(loc: Location): this(loc.world.uid, loc.blockX shr 4, loc.blockZ shr 4)
+
+    override fun equals(obj: Any?): Boolean {
+        if(this === obj) {
+            return true
+        }
+        if(obj == null || javaClass != obj.javaClass) {
+            return false
+        }
+        val other = obj as ChunkCoord
+        if(worldUUID != other.worldUUID) {
+            return false
+        }
+        return x == other.x && z == other.z
+    }
+
+    val chunk: Chunk?
+        get() {
+            val world = Bukkit.getWorld(worldUUID)
+            return world?.getChunkAt(x, z)
+        }
+
+    override fun hashCode(): Int {
+        val prime = 31
+        return prime * (prime * (prime + (worldUUID.hashCode() ?: 0)) + x) + z
+    }
+
+    fun setForceLoaded(b: Boolean) {
+        val chunk = chunk
+        if(chunk != null && SUPPORTS_FORCE_LOADED) {
+            try {
+                chunk.isForceLoaded = b
+            } catch(e: NoSuchMethodError) {
+                SUPPORTS_FORCE_LOADED = false
+            }
+        }
+    }
+
+    override fun toString(): String {
+        return "[$x,$z]"
+    }
+
+    companion object {
+        private var SUPPORTS_FORCE_LOADED = true
+    }
 }

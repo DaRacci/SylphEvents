@@ -1,8 +1,10 @@
 package com.sylphmc.events.core
 
 import co.aikar.commands.BaseCommand
+import com.github.shynixn.mccoroutine.asyncDispatcher
 import com.github.shynixn.mccoroutine.launch
 import com.github.shynixn.mccoroutine.launchAsync
+import com.github.shynixn.mccoroutine.minecraftDispatcher
 import com.sylphmc.events.api.data.ItemStackData
 import com.sylphmc.events.core.commands.EventCommands
 import com.sylphmc.events.core.factories.EventGUIFactoryImpl
@@ -26,6 +28,8 @@ class SylphEvents: RacciPlugin(
 
     companion object {
         lateinit var instance: SylphEvents; private set
+        val async get() = instance.asyncDispatcher
+        val sync get() = instance.minecraftDispatcher
         fun launch(f: suspend CoroutineScope.() -> Unit) = instance.launch(f)
         fun launchAsync(f: suspend CoroutineScope.() -> Unit) = instance.launchAsync(f)
     }

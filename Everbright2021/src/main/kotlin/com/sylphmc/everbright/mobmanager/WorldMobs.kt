@@ -7,7 +7,7 @@ import java.util.*
 class WorldMobs {
 
     val mobs = HashMap<UUID, SpecialMob<*>>()
-    private val tickQueue = ArrayDeque<SpecialMob<*>>()
+    val tickQueue = ArrayDeque<SpecialMob<*>>()
     private var entityTick = 0.0
 
     inline fun invokeIfPresent(
@@ -60,11 +60,11 @@ class WorldMobs {
      * @param key uid of entity
      * @return special mob if present.
      */
-    fun remove(key: UUID): SpecialMob<*>? {
+    fun remove(key: UUID, fullRemove: Boolean = true): SpecialMob<*>? {
         if (!mobs.containsKey(key)) return null
         val removed = mobs.remove(key)
         tickQueue.remove(removed)
-        removed?.remove()
+        if(fullRemove) removed?.remove()
         return removed
     }
 

@@ -178,9 +178,10 @@ object SpecialMobUtil {
 
     fun tagSpecialMob(
         entity: Entity,
+        persistence: Boolean = false,
     ) {
         entity.pdc.set(SPECIAL_MOB, PersistentDataType.BYTE, 1.toByte())
-        if(entity is LivingEntity) entity.removeWhenFarAway = true
+        if(entity is LivingEntity) entity.removeWhenFarAway = !persistence
         entity.isPersistent = false
     }
 

@@ -29,7 +29,10 @@ class EverbrightCommand: BaseCommand() {
     @CommandCompletion("@everbright")
     fun onSpawnMob(sender: CommandSender, mob: String) {
         if(sender !is Player) return
-        val factory = SpecialMobRegistry.getMobFactoryByName(mob) ?: return
+        val factory = SpecialMobRegistry.getMobFactoryByName(mob) //?: return
+        if(factory == null) {
+            println("Mob don't exist"); return
+        }
         val block = sender.getTargetBlock(50) ?: return
         block.world.spawn(block.location.add(0.0, 1.0, 0.0), factory.entityType.entityClass!!) {
             it.persistentDataContainer[NO_TOUCH, PersistentDataType.BYTE] = 1.toByte()

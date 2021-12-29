@@ -18,7 +18,7 @@ import org.bukkit.attribute.AttributeModifier
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
-import org.bukkit.persistence.PersistentDataType
+import org.bukkit.inventory.Recipe
 import java.util.*
 
 @Serializable
@@ -44,7 +44,7 @@ data class ItemStackData(
     @SerialName("NBT")
     var _nbt: Map<String, Boolean>? = null,
     @SerialName("Recipe")
-    var _recipe: Recipe? = null
+    var _recipe: com.sylphmc.events.api.data.Recipe? = null
 ) {
 
     fun buildItem(key: String): ItemStack {
@@ -79,7 +79,6 @@ data class ItemStackData(
             _nbt!!.forEach{nbtItem.getCompound("PublicBukkitValues").setBoolean(it.key, it.value)}
         }
         itemStack = nbtItem.item
-        println("${itemStack.persistentDataContainer.keys}")
         return itemStack
     }
 
